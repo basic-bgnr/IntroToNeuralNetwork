@@ -3,6 +3,8 @@
 Tracking my progress through Michael Nielson's Introductory Neural Network book [Neural Network and Machine Learning](http://neuralnetworksanddeeplearning.com/chap1.html)
 
 ### Runnning 
+![example](./example.gif)  
+
 Run the following from the current directory (python >= 3.8)
 
 ```
@@ -11,6 +13,7 @@ python3 -m pip install -r Requirements.txt
 ./init_dataset.sh
 ./run_prog.py
 ```
+* pulls the git repo
 * installs the dependencies
 * pulls the mnist dataset into the `./mnist_dataset` folder.
 * runs the program
