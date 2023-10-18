@@ -6,6 +6,7 @@ Tracking my progress through Michael Nielson's Introductory Neural Network book 
 Run the following from the current directory (python >= 3.8)
 
 ```
+git pull https://github.com/basic-bgnr/IntroToNeuralNetwork.git
 python3 -m pip install -r Requirements.txt
 ./init_dataset.sh
 ./run_prog.py
