@@ -23,19 +23,21 @@ class NeuralNetwork:
         # func = lambda x: 1 if x>0 else 0
         # return np.vectorize(func)(z)
 
-    def batch_data(self, data, size):
+    def batchData(self, data, size):
         return [data[k : k + size] for k in range(0, len(data), size)]
 
-    def SGD(self, input_data, epochs, batch_size, eta, test_data=None):
+    def SGD(self, input_data, epochs, batch_size, eta, test_data=None, lamda=0):
+        n_train_data = len(input_data)
+        n_test_data = len(test_data) if test_data else test_data
+
         for generation in range(epochs):
             random.shuffle(input_data)
-            batches = self.batch_data(input_data, batch_size)
+            batches = self.batchData(input_data, batch_size)
 
             for batch in batches:
-                self.trainBatch(batch, eta)
+                self.trainBatch(batch, eta, lamda, n_train_data)
 
             if test_data:
-                n_test_data = len(test_data)
                 print(f"Epoch {generation}: {self.evaluate(test_data)} / {n_test_data}")
             else:
                 print(f"Epoch {generation} completed")
@@ -46,16 +48,16 @@ class NeuralNetwork:
         network's output is assumed to be the index of whichever
         neuron in the final layer has the highest activation."""
         test_results = [
-            (np.argmax(self.feedforward(x)), np.argmax(y)) for (x, y) in test_data
+            (np.argmax(self.feedForward(x)), np.argmax(y)) for (x, y) in test_data
         ]
         return sum(int(x == y) for (x, y) in test_results)
 
-    def feedforward(self, x):
+    def feedForward(self, x):
         for w, b in zip(self.weights, self.bias):
             x = self.sigmoid(np.dot(w, x) + b)
         return x
 
-    def trainBatch(self, batch, eta):
+    def trainBatch(self, batch, eta, lamda, n_train_data):
         m = float(len(batch))
         new_weights = [np.zeros(w.shape) for w in self.weights]
         new_bias = [np.zeros(b.shape) for b in self.bias]
@@ -66,11 +68,12 @@ class NeuralNetwork:
             new_bias = [d_b + n_b for d_b, n_b in zip(new_bias, delta_bias)]
 
         self.weights = [
-            w - (eta * 1 / m) * nw for nw, w in zip(new_weights, self.weights)
+            w - eta * (nw / m + lamda * w / n_train_data)
+            for nw, w in zip(new_weights, self.weights)
         ]
         self.bias = [b - (eta * 1 / m) * nb for nb, b in zip(new_bias, self.bias)]
 
-    def backPropagate_mean_squared(self, x, y):
+    def backPropagateMeanSquared(self, x, y):
         delta_weights = [None] * (self.num_layers - 1)
         delta_bias = [None] * (self.num_layers - 1)
 
@@ -102,6 +105,7 @@ class NeuralNetwork:
 
         return delta_weights, delta_bias
 
+    # def backPropagateCrossEntropy(self, x, y):
     def backPropagate(self, x, y):
         delta_weights = [None] * (self.num_layers - 1)
         delta_bias = [None] * (self.num_layers - 1)
