@@ -70,7 +70,7 @@ class NeuralNetwork:
         ]
         self.bias = [b - (eta * 1 / m) * nb for nb, b in zip(new_bias, self.bias)]
 
-    def backPropagate(self, x, y):
+    def backPropagate_mean_squared(self, x, y):
         delta_weights = [None] * (self.num_layers - 1)
         delta_bias = [None] * (self.num_layers - 1)
 
@@ -98,6 +98,41 @@ class NeuralNetwork:
 
             delta_a = np.dot(
                 self.weights[-l].transpose(), (delta_a * activation_primes[-l])
+            )
+
+        return delta_weights, delta_bias
+
+    def backPropagate(self, x, y):
+        delta_weights = [None] * (self.num_layers - 1)
+        delta_bias = [None] * (self.num_layers - 1)
+
+        activation = x
+        activations = [x]
+        activation_primes = [self.sigmoid_prime(x)]
+
+        zs = []
+
+        for w, b in zip(self.weights, self.bias):
+            z = np.dot(w, activation) + b
+            zs.append(z)
+            activation = self.sigmoid(z)
+            activations.append(activation)
+            activation_prime = self.sigmoid_prime(z)
+            activation_primes.append(activation_prime)
+
+        delta_a = -(y / activations[-1] - (1 - y) / (1 - activations[-1]))
+        delta_bias[-1] = activations[-1] - y
+        delta_weights[-1] = np.dot(delta_bias[-1], activations[-2].transpose())
+
+        for l in range(2, self.num_layers):
+            delta_a = np.dot(
+                self.weights[-(l - 1)].transpose(),
+                (delta_a * activation_primes[-(l - 1)]),
+            )
+
+            delta_bias[-l] = delta_a * activation_primes[-l]
+            delta_weights[-l] = np.dot(
+                delta_bias[-l], activations[-(l + 1)].transpose()
             )
 
         return delta_weights, delta_bias
