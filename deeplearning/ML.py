@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import tqdm
 
 
 class NeuralNetwork:
@@ -9,7 +10,9 @@ class NeuralNetwork:
         consecutive_layer_pair = zip(layers, layers[1:])
         # print consecutive_layer_pair
 
-        self.weights = [np.random.randn(k, j) for j, k in consecutive_layer_pair]
+        self.weights = [
+            np.random.randn(k, j) / j**0.5 for j, k in consecutive_layer_pair
+        ]
         self.bias = [np.random.randn(i, 1) for i in layers[1:]]
 
     def sigmoid(self, z):
@@ -26,30 +29,42 @@ class NeuralNetwork:
     def batchData(self, data, size):
         return [data[k : k + size] for k in range(0, len(data), size)]
 
-    def SGD(self, input_data, epochs, batch_size, eta, test_data=None, lamda=0):
+    def SGD(
+        self, input_data, epochs, batch_size, eta, test_data=None, lamda=0.0, mu=1.0
+    ):
         n_train_data = len(input_data)
         n_test_data = len(test_data) if test_data else test_data
 
+        # for generation in tqdm.tqdm(range(epochs), desc="Total Progress", leave=False):
         for generation in range(epochs):
             random.shuffle(input_data)
             batches = self.batchData(input_data, batch_size)
 
-            for batch in batches:
-                self.trainBatch(batch, eta, lamda, n_train_data)
+            momentum_v = [np.zeros(w.shape) for w in self.weights]
+            for batch in tqdm.tqdm(
+                batches,
+                desc=f"{'Processing Minibatch':<35}",
+                leave=False,
+            ):
+                self.trainBatch(batch, eta, lamda, n_train_data, momentum_v, mu)
 
+            epoch_generation = f"Epoch {generation}"
             if test_data:
-                print(f"Epoch {generation}: {self.evaluate(test_data)} / {n_test_data}")
+                print(
+                    f"{epoch_generation:<35}: {self.evaluate(test_data)} / {n_test_data}"
+                )
             else:
-                print(f"Epoch {generation} completed")
+                print(f"{epoch_generation} completed")
 
     def evaluate(self, test_data):
         """Return the number of test inputs for which the neural
         network outputs the correct result. Note that the neural
         network's output is assumed to be the index of whichever
         neuron in the final layer has the highest activation."""
-        test_results = [
-            (np.argmax(self.feedForward(x)), np.argmax(y)) for (x, y) in test_data
-        ]
+        test_results = []
+        for x, y in tqdm.tqdm(test_data, desc=f"{'Evaluating':<35}", leave=False):
+            test_results.append((np.argmax(self.feedForward(x)), np.argmax(y)))
+
         return sum(int(x == y) for (x, y) in test_results)
 
     def feedForward(self, x):
@@ -57,7 +72,7 @@ class NeuralNetwork:
             x = self.sigmoid(np.dot(w, x) + b)
         return x
 
-    def trainBatch(self, batch, eta, lamda, n_train_data):
+    def trainBatch(self, batch, eta, lamda, n_train_data, momentum_v, mu):
         m = float(len(batch))
         new_weights = [np.zeros(w.shape) for w in self.weights]
         new_bias = [np.zeros(b.shape) for b in self.bias]
@@ -67,10 +82,14 @@ class NeuralNetwork:
             new_weights = [d_w + n_w for d_w, n_w in zip(new_weights, delta_weight)]
             new_bias = [d_b + n_b for d_b, n_b in zip(new_bias, delta_bias)]
 
-        self.weights = [
-            w - eta * (nw / m + lamda * w / n_train_data)
-            for nw, w in zip(new_weights, self.weights)
-        ]
+        for index, (n_w, v_w, w) in enumerate(
+            zip(new_weights, momentum_v, self.weights)
+        ):
+            momentum_v[index] = ((1 - mu) * v_w) - (
+                eta * (n_w / m + lamda * w / n_train_data)
+            )
+
+        self.weights = [(w + v_w) for v_w, w in zip(momentum_v, self.weights)]
         self.bias = [b - (eta * 1 / m) * nb for nb, b in zip(new_bias, self.bias)]
 
     def backPropagateMeanSquared(self, x, y):

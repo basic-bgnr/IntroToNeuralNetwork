@@ -3,17 +3,43 @@ import deeplearning.ML as ML
 import deeplearning.utils as utils
 
 
+data_set_location = "./mnist_dataset/"
+training_data_ratio = 0.1
+validation_data_ratio = 0.1
+testing_data_ratio = 0.1
+
+
+network_layers = [28 * 28, 30, 10]
+epochs = 6
+batch_size = 10
+eta = 0.5
+lamda = 0.5
+mu = 0.1
+
 training_data, validation_data, testing_data = utils.getTrainingValidationTestingData(
-    data_set_location="./mnist_dataset/"
+    data_set_location=data_set_location,
+    training_data_ratio=training_data_ratio,
+    validation_data_ratio=validation_data_ratio,
+    testing_data_ratio=testing_data_ratio,
 )
 
-net = ML.NeuralNetwork([28 * 28, 30, 10])
+print(
+    f"\n{'Training/Validation/Testing Data':<35}: {list(map(len, [training_data, validation_data, testing_data]))} Images Loaded"
+)
 
+
+print(f"{'Neural Network Initialized':<35}: {network_layers}")
+print(f"{'Hyper Parameters':<35}: {epochs=}, {batch_size=}, {eta=}, {lamda=}, {mu=}\n")
+
+net = ML.NeuralNetwork(network_layers)
 net.SGD(
     input_data=training_data,
-    epochs=60,
-    batch_size=10,
-    eta=0.5,
     test_data=testing_data,
-    lamda=0.5,
+    epochs=epochs,
+    batch_size=batch_size,
+    eta=eta,
+    lamda=lamda,
+    mu=mu,
 )
+print("\nTraining Completed\n")
+print(f"{'Validataion':<35}: {net.evaluate(validation_data)} / {len(validation_data)}")
