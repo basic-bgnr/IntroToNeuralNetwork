@@ -6,8 +6,9 @@ import tqdm
 class NeuralNetwork:
     def __init__(self, layers):
         self.num_layers = len(layers)
+        self.layers = layers
 
-        consecutive_layer_pair = zip(layers, layers[1:])
+        consecutive_layer_pair = zip(self.layers, self.layers[1:])
         # print consecutive_layer_pair
 
         self.weights = [
@@ -30,7 +31,15 @@ class NeuralNetwork:
         return [data[k : k + size] for k in range(0, len(data), size)]
 
     def SGD(
-        self, input_data, epochs, batch_size, eta, test_data=None, lamda=0.0, mu=1.0
+        self,
+        input_data,
+        epochs,
+        batch_size,
+        eta,
+        test_data=None,
+        lamda=0.0,
+        mu=1.0,
+        dropout_ratio=0.0,
     ):
         n_train_data = len(input_data)
         n_test_data = len(test_data) if test_data else test_data
@@ -46,7 +55,9 @@ class NeuralNetwork:
                 desc=f"{'Processing Minibatch':<35}",
                 leave=False,
             ):
-                self.trainBatch(batch, eta, lamda, n_train_data, momentum_v, mu)
+                self.trainBatch(
+                    batch, eta, lamda, n_train_data, momentum_v, mu, dropout_ratio
+                )
 
             epoch_generation = f"Epoch {generation}"
             if test_data:
@@ -72,13 +83,36 @@ class NeuralNetwork:
             x = self.sigmoid(np.dot(w, x) + b)
         return x
 
-    def trainBatch(self, batch, eta, lamda, n_train_data, momentum_v, mu):
+    def trainBatch(
+        self, batch, eta, lamda, n_train_data, momentum_v, mu, dropout_ratio
+    ):
         m = float(len(batch))
         new_weights = [np.zeros(w.shape) for w in self.weights]
         new_bias = [np.zeros(b.shape) for b in self.bias]
 
+        # in this dropout filter we don't touch the input image layer and the output layer
+        # i.e. we only filter the hidden layers
+        # the following dropout filter is appended with [(output_neuron_num, 1)] so that it wouldn't filter
+        # output layer, it might seem that since the last layer is filled with ones so as to not modify the output
+        # layer but why isn't the first layer is also added, for this we need to look at the backpropagation algorith
+        # where multiplication with filter matrix is calculated out ( basically the first neuron is left as it is before looping)
+
+        dropout_filter = (
+            [
+                np.random.binomial(1.0, (1.0 - dropout_ratio), (self.layers[0], 1))
+                / (1.0 - dropout_ratio)
+            ]
+            + [
+                np.random.binomial(1.0, (1.0 - dropout_ratio), b.shape)
+                / (1.0 - dropout_ratio)
+                for b in new_bias[:-1]  # avoid the output layer
+            ]
+            + [np.ones((self.layers[-1], 1))]
+        )  #
         for x, y in batch:
-            delta_weight, delta_bias = self.backPropagate(x, y)
+            delta_weight, delta_bias = self.backPropagateCrossEntropy(
+                x, y, dropout_filter
+            )
             new_weights = [d_w + n_w for d_w, n_w in zip(new_weights, delta_weight)]
             new_bias = [d_b + n_b for d_b, n_b in zip(new_bias, delta_bias)]
 
@@ -92,22 +126,23 @@ class NeuralNetwork:
         self.weights = [(w + v_w) for v_w, w in zip(momentum_v, self.weights)]
         self.bias = [b - (eta * 1 / m) * nb for nb, b in zip(new_bias, self.bias)]
 
-    def backPropagateMeanSquared(self, x, y):
+    def backPropagateMeanSquared(self, x, y, dropout_filter):
         delta_weights = [None] * (self.num_layers - 1)
         delta_bias = [None] * (self.num_layers - 1)
 
         activation = x
-        activations = [x]
+        activations = [x] * dropout_filter[0]
         activation_primes = [self.sigmoid_prime(x)]
 
         zs = []
 
-        for w, b in zip(self.weights, self.bias):
+        for w, b, f in zip(self.weights, self.bias, dropout_filter[:-1]):
             z = np.dot(w, activation) + b
+            z = z
             zs.append(z)
-            activation = self.sigmoid(z)
+            activation = self.sigmoid(z) * f
             activations.append(activation)
-            activation_prime = self.sigmoid_prime(z)
+            activation_prime = self.sigmoid_prime(z) * f
             activation_primes.append(activation_prime)
 
         delta_a = activations[-1] - y
@@ -125,22 +160,22 @@ class NeuralNetwork:
         return delta_weights, delta_bias
 
     # def backPropagateCrossEntropy(self, x, y):
-    def backPropagate(self, x, y):
+    def backPropagateCrossEntropy(self, x, y, dropout_filter):
         delta_weights = [None] * (self.num_layers - 1)
         delta_bias = [None] * (self.num_layers - 1)
 
-        activation = x
+        activation = x * dropout_filter[0]
         activations = [x]
         activation_primes = [self.sigmoid_prime(x)]
 
         zs = []
 
-        for w, b in zip(self.weights, self.bias):
+        for w, b, f in zip(self.weights, self.bias, dropout_filter[1:]):
             z = np.dot(w, activation) + b
             zs.append(z)
-            activation = self.sigmoid(z)
+            activation = self.sigmoid(z) * f
             activations.append(activation)
-            activation_prime = self.sigmoid_prime(z)
+            activation_prime = self.sigmoid_prime(z) * f
             activation_primes.append(activation_prime)
 
         delta_a = -(y / activations[-1] - (1 - y) / (1 - activations[-1]))
