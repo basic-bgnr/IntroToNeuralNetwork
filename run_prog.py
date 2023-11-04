@@ -45,4 +45,6 @@ net.SGD(
     dropout_ratio=dropout_ratio,
 )
 print("\nTraining Completed\n")
-print(f"{'Validataion':<35}: {net.evaluate(validation_data)} / {len(validation_data)}")
+print(
+    f"{'Validataion':<35}: {net.evaluate(validation_data, ML.eval_function)} / {len(validation_data)}"
+)

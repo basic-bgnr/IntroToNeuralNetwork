@@ -3,6 +3,10 @@ import random
 import tqdm
 
 
+def eval_function(feedForward, x, y):
+    return np.argmax(feedForward(x)), np.argmax(y)
+
+
 class NeuralNetwork:
     def __init__(self, layers):
         self.num_layers = len(layers)
@@ -40,6 +44,7 @@ class NeuralNetwork:
         lamda=0.0,
         mu=1.0,
         dropout_ratio=0.0,
+        eval_function=eval_function,
     ):
         n_train_data = len(input_data)
         n_test_data = len(test_data) if test_data else test_data
@@ -61,20 +66,21 @@ class NeuralNetwork:
 
             epoch_generation = f"Epoch {generation}"
             if test_data:
-                print(
-                    f"{epoch_generation:<35}: {self.evaluate(test_data)} / {n_test_data}"
-                )
+                result = self.evaluate(test_data, eval_function)
+                print(f"{epoch_generation:<35}: {result} / {n_test_data}")
+                if result == n_test_data:
+                    return
             else:
                 print(f"{epoch_generation} completed")
 
-    def evaluate(self, test_data):
+    def evaluate(self, test_data, eval_function):
         """Return the number of test inputs for which the neural
         network outputs the correct result. Note that the neural
         network's output is assumed to be the index of whichever
         neuron in the final layer has the highest activation."""
         test_results = []
         for x, y in tqdm.tqdm(test_data, desc=f"{'Evaluating':<35}", leave=False):
-            test_results.append((np.argmax(self.feedForward(x)), np.argmax(y)))
+            test_results.append(eval_function(self.feedForward, x, y))
 
         return sum(int(x == y) for (x, y) in test_results)
 
