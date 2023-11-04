@@ -98,11 +98,12 @@ class NeuralNetwork:
         # where multiplication with filter matrix is calculated out ( basically the first neuron is left as it is before looping)
 
         dropout_filter = (
+            # [
+            #     np.random.binomial(1.0, (1.0 - dropout_ratio), (self.layers[0], 1))
+            #     / (1.0 - dropout_ratio)
+            # ]
+            # + [
             [
-                np.random.binomial(1.0, (1.0 - dropout_ratio), (self.layers[0], 1))
-                / (1.0 - dropout_ratio)
-            ]
-            + [
                 np.random.binomial(1.0, (1.0 - dropout_ratio), b.shape)
                 / (1.0 - dropout_ratio)
                 for b in new_bias[:-1]  # avoid the output layer
@@ -131,12 +132,14 @@ class NeuralNetwork:
         delta_bias = [None] * (self.num_layers - 1)
 
         activation = x
-        activations = [x] * dropout_filter[0]
+        activations = [x]  # * dropout_filter[0]
         activation_primes = [self.sigmoid_prime(x)]
 
         zs = []
 
-        for w, b, f in zip(self.weights, self.bias, dropout_filter[:-1]):
+        for w, b, f in zip(
+            self.weights, self.bias, dropout_filter
+        ):  # dropout_filter[:-1]):
             z = np.dot(w, activation) + b
             z = z
             zs.append(z)
@@ -164,13 +167,15 @@ class NeuralNetwork:
         delta_weights = [None] * (self.num_layers - 1)
         delta_bias = [None] * (self.num_layers - 1)
 
-        activation = x * dropout_filter[0]
+        activation = x  # * dropout_filter[0]
         activations = [x]
         activation_primes = [self.sigmoid_prime(x)]
 
         zs = []
 
-        for w, b, f in zip(self.weights, self.bias, dropout_filter[1:]):
+        for w, b, f in zip(
+            self.weights, self.bias, dropout_filter
+        ):  # dropout_filter[1:]):
             z = np.dot(w, activation) + b
             zs.append(z)
             activation = self.sigmoid(z) * f
