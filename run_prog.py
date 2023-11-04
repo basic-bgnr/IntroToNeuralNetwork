@@ -7,6 +7,7 @@ data_set_location = "./mnist_dataset/"
 training_data_ratio = 1.0
 validation_data_ratio = 1.0 / 6.0
 testing_data_ratio = 0.1
+testing_data_ratio = 1.0
 
 
 network_layers = [28 * 28, 30, 30, 10]
@@ -28,7 +29,7 @@ training_data, validation_data, testing_data = utils.getTrainingValidationTestin
     validation_data_ratio=validation_data_ratio,
     testing_data_ratio=testing_data_ratio,
 )
-
+training_data = training_data * 2
 print(
     f"\n{'Training/Validation/Testing Data':<35}: {list(map(len, [training_data, validation_data, testing_data]))} Images Loaded"
 )
