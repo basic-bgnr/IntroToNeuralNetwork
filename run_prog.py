@@ -2,11 +2,11 @@
 import deeplearning.ML as ML
 import deeplearning.utils as utils
 
+import pickle
 
 data_set_location = "./mnist_dataset/"
 training_data_ratio = 1.0
 validation_data_ratio = 1.0 / 6.0
-testing_data_ratio = 0.1
 testing_data_ratio = 1.0
 
 
@@ -49,3 +49,8 @@ print("\nTraining Completed\n")
 print(
     f"{'Validataion':<35}: {net.evaluate(validation_data, ML.eval_function)} / {len(validation_data)}"
 )
+
+with open("./final_network/mnist.pkl", "wb") as open_file:
+    pickle.dump(net, open_file)
+
+print(f"Writing data to ./final_network/mnist.pkl")
